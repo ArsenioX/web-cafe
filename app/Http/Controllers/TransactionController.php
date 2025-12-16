@@ -142,8 +142,15 @@ class TransactionController extends Controller
 
 
     // 4. PROSES BAYAR (FINAL)
+    // 4. PROSES BAYAR (FINAL)
     public function checkout(Request $request)
     {
+        // 1. Validasi Input (terutama paid_amount)
+        $request->validate([
+            'paid_amount' => 'required|numeric', // Paid amount harus ada dan berupa angka
+            // payment_method sudah pasti CASH dari form
+        ]);
+
         $cart = session()->get('cart');
         $total_price = 0;
 
@@ -155,28 +162,36 @@ class TransactionController extends Controller
             $total_price += $item['price'] * $item['quantity'];
         }
 
+        // 🚨 Cek Pembayaran Minimum 🚨
+        $paidAmount = (int)$request->paid_amount;
+
+        if ($paidAmount < $total_price) {
+            // Ini seharusnya dicegah oleh JS di frontend, tapi ini adalah fail-safe di backend
+            return redirect()->back()->with('error', 'Uang yang dibayarkan (' . number_format($paidAmount) . ') kurang dari total tagihan (' . number_format($total_price) . ')!');
+        }
+
         DB::beginTransaction();
         try {
-            // 1. Simpan Transaksi
+            // 2. Simpan Transaksi
             $transaction = Transaction::create([
                 'invoice_code' => 'INV-' . time(),
                 'user_id' => Auth::id(),
                 'total_price' => $total_price,
-                'payment_method' => $request->payment_method,
+                'paid_amount' => $paidAmount, // ⬅️ PENAMBAHAN INPUT UANG DITERIMA
+                'payment_method' => $request->payment_method, // Tetap gunakan value dari form (yang kita set CASH)
                 'status' => 'PAID'
             ]);
 
-            // 2. Simpan Detail & Kurangi Stok ⬅️ BAGIAN YANG DIOPTIMALKAN
+            // 3. Simpan Detail & Kurangi Stok
             $product_ids = array_keys($cart);
-            // Ambil semua produk yang ada di keranjang dalam satu query
             $products = Product::whereIn('id', $product_ids)->get()->keyBy('id');
 
             foreach ($cart as $id => $details) {
-                $product = $products[$id]; // Mengambil dari collection yang sudah dimuat (lebih cepat)
+                $product = $products[$id];
 
                 // Simpan perubahan stok
                 $product->stock -= $details['quantity'];
-                $product->save(); // Masih perlu save untuk setiap produk
+                $product->save();
 
                 // Simpan Detail Transaksi
                 TransactionDetail::create([
@@ -191,8 +206,10 @@ class TransactionController extends Controller
             session()->forget('cart');
 
             // --- ⬇️ LOGIKA NOMOR ANTRIAN ⬇️ ---
+            // Nomor antrian dihitung dari jumlah transaksi hari ini
             $nomor_antrian = Transaction::whereDate('created_at', date('Y-m-d'))->count();
 
+            // 4. Kirim data transaksi lengkap (termasuk paid_amount) ke sesi untuk Modal Struk
             return redirect()->route('user.dashboard')->with([
                 'success' => 'Transaksi Berhasil!',
                 'last_transaction' => $transaction,
@@ -200,10 +217,9 @@ class TransactionController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollback();
-            return redirect()->back()->with('error', 'Gagal: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal memproses transaksi. Silakan coba lagi. Pesan Error: ' . $e->getMessage());
         }
     }
-
 
 
 
@@ -225,5 +241,16 @@ class TransactionController extends Controller
 
         // Kalau mau dilihat dulu (Preview) baru download, ganti ->download jadi ->stream
         // return $pdf->stream(); 
+    }
+
+    public function history()
+    {
+        // Ambil transaksi HANYA milik user yang sedang login (Kasir ini saja)
+        // Diurutkan dari yang terbaru
+        $transactions = Transaction::where('user_id', auth()->id())
+            ->latest()
+            ->paginate(10);
+
+        return view('user.history', compact('transactions'));
     }
 }

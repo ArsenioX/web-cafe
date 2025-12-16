@@ -86,7 +86,7 @@
             </tr>
             <tr>
                 <td>Kasir</td>
-                <td class="text-right">{{ Auth::user()->name ?? 'Admin' }}</td>
+                <td class="text-right">{{ $transaction->user->name ?? 'Admin' }}</td>
             </tr>
         </table>
 
@@ -113,6 +113,30 @@
                 <td class="text-right">Rp {{ number_format($transaction->total_price, 0, ',', '.') }}</td>
             </tr>
         </table>
+
+        {{-- ⬇️ BAGIAN BARU UNTUK BAYAR DAN KEMBALIAN ⬇️ --}}
+        @if ($transaction->paid_amount && $transaction->paid_amount >= $transaction->total_price)
+            @php
+                $kembalian = $transaction->paid_amount - $transaction->total_price;
+            @endphp
+
+            <table style="font-size: 9pt; margin-top: 5px;">
+                <tr>
+                    <td>BAYAR</td>
+                    <td class="text-right">Rp {{ number_format($transaction->paid_amount, 0, ',', '.') }}</td>
+                </tr>
+            </table>
+
+            <div class="divider"></div>
+
+            <table style="font-size: 10pt; font-weight: bold;">
+                <tr>
+                    <td>KEMBALIAN</td>
+                    <td class="text-right">Rp {{ number_format($kembalian, 0, ',', '.') }}</td>
+                </tr>
+            </table>
+        @endif
+        {{-- ⬆️ AKHIR BAGIAN BAYAR DAN KEMBALIAN ⬆️ --}}
 
         <div style="font-size: 8pt; margin-top: 5px;">
             Metode: {{ $transaction->payment_method }}

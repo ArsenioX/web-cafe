@@ -63,4 +63,5 @@ Route::middleware(['auth', 'role:user'])->prefix('user')->group(function () {
     // Checkout
     Route::post('/checkout', [TransactionController::class, 'checkout'])->name('transaction.process');
     Route::get('/transaction/{id}/print', [TransactionController::class, 'printStruk'])->name('transaction.print');
+    Route::get('/history', [TransactionController::class, 'history'])->name('user.history');
 });

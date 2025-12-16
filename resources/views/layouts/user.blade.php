@@ -108,10 +108,30 @@
                     </a>
 
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
+                        {{-- 1. Menu Kasir (Opsional, untuk balik ke home) --}}
                         <li>
-                            <a class="dropdown-item" href="{{ route('logout') }}"
+                            <a class="dropdown-item" href="{{ route('user.dashboard') }}">
+                                <i class="bi bi-shop me-2"></i> Menu Kasir
+                            </a>
+                        </li>
+                    
+                        {{-- 2. Menu Riwayat Pesanan (YANG BARU DITAMBAHKAN) --}}
+                        <li>
+                            <a class="dropdown-item" href="{{ route('user.history') }}">
+                                <i class="bi bi-clock-history me-2"></i> Riwayat Pesanan
+                            </a>
+                        </li>
+                    
+                        {{-- Garis Pemisah --}}
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                    
+                        {{-- 3. Menu Logout --}}
+                        <li>
+                            <a class="dropdown-item text-danger" href="{{ route('logout') }}"
                                 onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                Logout
+                                <i class="bi bi-box-arrow-right me-2"></i> Logout
                             </a>
                         </li>
                     </ul>
